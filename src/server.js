@@ -170,11 +170,17 @@ async function sendMail(to, subject, text) {
   }
 }
 function renderFormError(message, user = null) {
-  return page('Помилка', `<p class="error">${escapeHtml(message)}</p><p><a href="javascript:history.back()">Повернутися</a></p>`, user);
+  return page('Помилка', `<p class="error">${escapeHtml(message)}</p><p><a href="/">На головну</a></p>`, user);
 }
 
 app.disable('x-powered-by');
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      imgSrc: ["'self'", 'data:']
+    }
+  }
+}));
 app.use(express.urlencoded({ extended: false, limit: '20kb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(session({
@@ -237,7 +243,7 @@ app.post('/register', async (req, res) => {
   const confirm = String(req.body.confirmPassword || '');
   const captcha = req.session.captcha;
   delete req.session.captcha;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return res.status(400).send(renderFormError('Введіть коректну email-адресу.'));
+  if (email.length > 254 || !/^[^\s@]+@[^.\s@]+(?:\.[^.\s@]+)+$/.test(email)) return res.status(400).send(renderFormError('Введіть коректну email-адресу.'));
   if (!validPassword(password)) return res.status(400).send(renderFormError('Пароль не відповідає політиці безпеки.'));
   if (password !== confirm) return res.status(400).send(renderFormError('Паролі не збігаються.'));
   if (!captcha || now() - captcha.at > 5 * 60_000 || String(req.body.captcha || '').trim() !== captcha.answer)
